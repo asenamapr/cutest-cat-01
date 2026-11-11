@@ -2913,4 +2913,11 @@ const IMAGE_BASE64 = [
 
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, 'entry.png'), Buffer.from(IMAGE_BASE64, 'base64'));
+const bytes = Buffer.from(IMAGE_BASE64, 'base64');
+// Sanity-check the decoded image before writing it: a whole JPEG starts with
+// SOI (FF D8) and ends with EOI (FF D9). Fail loudly instead of writing a
+// truncated file if the embedded data were ever damaged.
+if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) {
+  throw new Error('entry image is not a whole JPEG');
+}
+writeFileSync(join(outDir, 'entry.png'), bytes);
